@@ -11,14 +11,16 @@
         #messages { list-style-type: none; margin: 0; padding: 0; }
         #messages li { padding: 5px 10px; }
         #messages li:nth-child(odd) { background: #eee; }
+        #writing { background: #eee; position: absolute; top: 0; right: 0; height: 30px; width: 40%; padding-top: 7px; text-align: right; margin-right: 10px; }
     </style>
     <script src="../../socket.io/socket.io.js"></script>
     <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
   </head>
   <body>
+    <strong id="writing"></strong>
     <ul id="messages"></ul>
     <form action="/" method="POST" id="chatForm">
-      <input id="txt" autocomplete="off" autofocus="on" oninput="isTyping()" placeholder="type your message here..." /><button>Send</button>
+      <input id="txt" autocomplete="off" autofocus="on" oninput="isTyping()" placeholder="escribe tu mensaje..." /><button>Enviar</button>
     </form>
     <script>
             var socket = io.connect('http://localhost:8080');
@@ -26,7 +28,7 @@
             // submit text message without reload/refresh the page
             $('form').submit(function(e){
                 e.preventDefault(); // prevents page reloading
-                socket.emit('chat_message', $('#txt').val());
+                socket.emit('chat_message', urlify($('#txt').val()));
                 $('#txt').val('');
                 return false;
             });
@@ -34,6 +36,7 @@
             // append the chat text message
             socket.on('chat_message', function(msg){
                 $('#messages').append($('<li>').html(msg));
+                $('#writing').text("");
             });
 
             // append text if someone is online
@@ -41,10 +44,39 @@
                 $('#messages').append($('<li>').html(username));
             });
 
+            // append text if someone is online
+            socket.on('typing', function(map) {
+              if(map.username !== username)
+              $('#writing').text(map.message);
+            });
+
             // ask username
-            var username = prompt('Please tell me your name');
+            var username = prompt('¿Cómo te llamas?');
+            if(username == null) {
+              username = "Fulanito " + Math.round(Math.random() * 1000);
+              alert("Como no me dijiste tu nombre, desde ahora serás " + username);
+            }
+
             socket.emit('username', username);
 
+            function isTyping() {
+              socket.emit('typing', username);
+            }
+
+            function urlify(text) {
+              var urlRegex = /(https?:\/\/[^\s]+)/g;
+              if(text.match(urlRegex))
+              return text.replace(urlRegex, function(url) {
+                return '<a href="' + url + '">' + url + '</a>';
+              })
+              return text;
+              // or alternatively
+              // return text.replace(urlRegex, '<a href="$1">$1</a>')
+            }
+
+            setInterval(function () {
+              $('#writing').text("");
+            }, 10000);
     </script>
   </body>
 </html>
